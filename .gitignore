@@ -23,6 +23,7 @@
 ## Eagle
 #############
 
+*.pro
 *.epf
 *.brd
 *.sch
