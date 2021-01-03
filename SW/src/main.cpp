@@ -15,11 +15,8 @@ SoftwareSerial SWSerial( D1, D2 ); // RX, TX
 PN532_SWHSU pn532hsu(SWSerial);
 PN532 nfc(pn532hsu);
 
-char ssid[] = "laskalab"; // your network SSID (name)
-char pass[] = "laskaLAB754125"; // your network password
-
-//char ssid[] = "Krewedko"; // your network SSID (name)
-//char pass[] = "trzlaskova1"; // your network password
+char ssid[] = "xxxx"; // your network SSID (name)
+char pass[] = "xxxx"; // your network password
 
 WiFiClientSecure client;
 
