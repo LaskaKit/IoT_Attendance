@@ -1,41 +1,48 @@
+/* LasKKit IoT Attendance. 
+ * Google Sheet edition
+ * Read RFID tag, compare and write enter and exit to Google Sheet
+ * Google Script: src/google_script.gs
+ * For settings see config.h
+ * 
+ * Email:obchod@laskarduino.cz
+ * Web:laskarduino.cz
+ * 
+ *Google Sheet How To https://arduinodiy.wordpress.com/2019/11/18/sending-esp8266-sensordata-to-googlesheet/
+ */
+
+#include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <PN532_SWHSU.h>
 #include <PN532.h>
-
 #include <ESP8266WiFi.h>
-//Include the SSL client
-#include <WiFiClientSecure.h>
+#include <WiFiClientSecure.h> //Include the SSL client
+#include "config.h"           // change to config.h and fill the file.
 
-String GAS_ID = "AKfycbygLIPks3_uJdokokiNyro0rE3mnl7gd55xrqINNTBUwGhR6DE";//getactivespreadsheetID
 const char* fingerprint = "46 B2 C3 44 9C 59 09 8B 01 B6 F8 BD 4C FB 00 74 91 2F EF F6";
 const char* host = "script.google.com";
 const int httpsPort = 443;
 
-SoftwareSerial SWSerial( D1, D2 ); // RX, TX    
+SoftwareSerial SWSerial( 5, 4 ); // RX, TX    
 PN532_SWHSU pn532hsu(SWSerial);
 PN532 nfc(pn532hsu);
-
-char ssid[] = "laskalab"; // your network SSID (name)
-char pass[] = "laskaLAB754125"; // your network password
-
-//char ssid[] = "Krewedko"; // your network SSID (name)
-//char pass[] = "trzlaskova1"; // your network password
 
 WiFiClientSecure client;
 
 const byte buzzIntervalMs = 100;
-#define BUZZ D5
+#define BUZZ 12
+#define LED 13
 
-void buzz(){
+void buzz() {
+
   Serial.println("--buuuuzz--");
   analogWrite(BUZZ, 200);
+  digitalWrite(LED, HIGH);
   delay(buzzIntervalMs);
-  pinMode(BUZZ, INPUT_PULLUP);
   digitalWrite(BUZZ, LOW);
+  digitalWrite(LED, LOW);
 }
 
-void sendData(String string_x)
-{
+void sendData(String string_x) {
 
   Serial.print("connecting to ");
   Serial.println(host);
@@ -48,11 +55,11 @@ void sendData(String string_x)
     return;
   }
 
-  if (client.verify(fingerprint, host)) {
+  if (client.verify(fingerprint, host))
     Serial.println("certificate matches");
-  } else {
+  else
     Serial.println("certificate doesn't match");
-  }
+  
   Serial.println(string_x);
 
   String url = "/macros/s/" + GAS_ID + "/exec?name=" + string_x;
@@ -75,22 +82,23 @@ void sendData(String string_x)
   }
   String line = client.readStringUntil('\n');
   Serial.println(line);
-  if (line.startsWith("{\"state\":\"success\"")) {
+
+  if (line.startsWith("{\"state\":\"success\""))
     Serial.println("esp8266/Arduino CI successfull!");
-  } else {
+  else
     Serial.println("esp8266/Arduino CI has failed");
-  }
+
   Serial.println("reply was: closing connection");
 }
 
 void getCard() {
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0 };  // Buffer to store the returned UID
-  uint8_t uidLength;                        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+  uint8_t uidLength;               // Length of the UID (4 bytes )
     
   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
   // 'uid' will be populated with the UID, and uidLength will indicate
-  // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
+  // if the uid is 4 bytes (Mifare Classic)
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
   
   if (success) {
@@ -101,22 +109,31 @@ void getCard() {
     Serial.print("  UID Length: ");Serial.print(uidLength, DEC);Serial.println(" bytes");
     Serial.print("  UID Value: ");
     nfc.PrintHex(uid, uidLength);
-    
-    if( uid[0]==0xC9 && uid[1]==0x4F && uid[2]==0x02 && uid[3]==0xB9 ) {  //C9 4F 02 B9
-    sendData("Helena");
-  }  else if( uid[0]==0x86 && uid[1]==0x2D && uid[2]==0x14 && uid[3]==0xCA ) {  //86 2D 14 CA
-    sendData("Martin");
-  } else if(uid[0]==0x76 && uid[1]==0x16 && uid[2]==0xB0 && uid[3]==0xCA) { //76 16 B0 CA
-    sendData("Marek");
-  } else if( uid[0]==0x2B && uid[1]==0xD0 && uid[2]==0x6B && uid[3]==0x21 ) { //
-    sendData("Kosta");
-  } else {
-    Serial.println("Get the fuck outta my office");
-    buzz();
-    buzz();
+  
+    bool found = false;
+    byte count = 0;
+    for (int i=0; i < sizeof(target_tag)/4; i++) {  // number of rows
+      if (!found) {
+        for (int j=0; j < 4; j++){
+          if (uid[j]==target_tag[i][j]) {
+            count++;
+          } else break;
+          if(count == 4){
+            sendData(names[i]);   // TAG_ID [i]
+            buzz();
+            found = true;
+          }
+        }
+      }
     }
-    buzz();
+    if (!found){
+      Serial.println("Access not granted");
+      buzz();
+      buzz();
+      buzz();
+    }
   }
+
 }
 
 void setup() {
@@ -124,8 +141,26 @@ void setup() {
   Serial.begin(9600);
   while(!Serial) {} // Wait
 
-  pinMode(BUZZ, INPUT_PULLUP);
+  pinMode(BUZZ, OUTPUT_OPEN_DRAIN);
   digitalWrite(BUZZ, LOW);
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, LOW);
+  
+  // pripojeni k WiFi
+  Serial.println();
+  Serial.print("Connecting to...");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, pass);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("Wi-Fi connected successfully");
+  
   nfc.begin();
 
   uint32_t versiondata = nfc.getFirmwareVersion();
@@ -137,25 +172,9 @@ void setup() {
   // configure board to read RFID tags
   nfc.SAMConfig();
   Serial.println("Waiting for an ISO14443A Card ...");
-  
-  // pripojeni k WiFi
-  Serial.println();
-  Serial.print("Connecting to...");
-  Serial.println(ssid);
-
- // WiFi.config(ip,gateway,subnet);
-  WiFi.begin(ssid, pass);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("Wi-Fi connected successfully");
 }
 
 void loop(){
   getCard();
   delay(1000);
-
 }
