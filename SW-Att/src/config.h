@@ -1,7 +1,7 @@
 char ssid[] = "yourWiFiSSIDname";   // your network SSID (name)
 char pass[] = "yourWiFipassword";   // your network password
 
-String GAS_ID = "AKfycbygLIPks3_uJdokokiNyro0rE3mnl7gd55xrqINNTBUwGhR6DE";  //getactivespreadsheetID
+String GAS_ID = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";  //getactivespreadsheetID
 
 byte target_tag[4][4]={
     {0xC9, 0x4F, 0x02, 0xB9},   // TAG_ID [0] C9 4F 02 B9 "Helena"
