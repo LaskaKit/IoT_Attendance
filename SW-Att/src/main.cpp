@@ -16,7 +16,7 @@
 #include <PN532.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h> //Include the SSL client
-#include "config.h"           // change to config.h and fill the file.
+#include "config_my.h"           // change to config.h and fill the file.
 
 const char* fingerprint = "46 B2 C3 44 9C 59 09 8B 01 B6 F8 BD 4C FB 00 74 91 2F EF F6";
 const char* host = "script.google.com";
